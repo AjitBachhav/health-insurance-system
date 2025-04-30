@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Insurance System Overview</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <nav>
+        <h3>Navigation</h3>
+        <ul>
+            <li><a href="#architecture">1. Simplified Architecture</a></li>
+            <li><a href="#data-models">2. Core Data Models</a></li>
+            <li><a href="#code-snippets">3. Essential Code Snippets</a></li>
+            <li><a href="#deployment-options">4. Deployment Options</a></li>
+        </ul>
+    </nav>
+    <hr>
+    <h1>Health Insurance System - Concise Overview</h1>
+    <p>This document provides a high-level overview of a simplified Health Insurance System, focusing on core concepts rather than a detailed microservice implementation.</p>
+    <h2 id="architecture">1. Simplified Architecture</h2>
+    <p>Instead of a complex microservices architecture, we can consider a <strong>Modular Monolith</strong> approach using Spring Boot. This keeps the system as a single deployable unit but organizes the code into distinct modules, making it easier to manage than a traditional monolith while avoiding the overhead of microservices for a smaller scope.</p>
+    <p><strong>Core Modules:</strong></p>
+    <ul>
+        <li><strong>User Module:</strong> Handles user registration, login, profile management, and authentication/authorization (e.g., using Spring Security).</li>
+        <li><strong>Plan Module:</strong> Manages insurance plan details, including benefits, premiums, and provider networks. Provides APIs to list and view plans.</li>
+        <li><strong>Policy Module:</strong> Handles policy creation based on user selection, manages policy lifecycle (effective dates, status), and potentially stores basic policyholder/dependent information.</li>
+        <li><strong>Payment Module (Simplified):</strong> Integrates with a payment gateway (like Stripe) for processing premium payments. Could initially focus just on one-time payments.</li>
+        <li><strong>Claims Module (Simplified):</strong> Allows users to submit basic claim information (date of service, amount) and tracks claim status (Submitted, Processing, Approved, Denied). Document upload could be simplified or omitted initially.</li>
+    </ul>
+    <p><strong>Key Interactions:</strong></p>
+    <ul>
+        <li>Users interact via a Web UI/API Gateway (though for simplicity, direct API access to the monolith is assumed here).</li>
+        <li>Policy Module interacts with User and Plan modules to create policies.</li>
+        <li>Payment Module interacts with Policy Module to trigger payments and update policy status.</li>
+        <li>Claims Module interacts with Policy Module to validate claims against active policies.</li>
+    </ul>
+    <p><strong>Technology Stack:</strong></p>
+    <ul>
+        <li><strong>Backend:</strong> Java, Spring Boot</li>
+        <li><strong>Database:</strong> PostgreSQL (or similar relational DB)</li>
+        <li><strong>Authentication:</strong> Spring Security (JWT or session-based)</li>
+        <li><strong>Payment:</strong> Stripe SDK (or similar)</li>
+        <li><strong>Build:</strong> Maven or Gradle</li>
+    </ul>
+    <p>This simplified structure reduces deployment complexity and inter-service communication overhead compared to the microservices approach.</p>
+    <h2 id="data-models">2. Core Data Models (Simplified JPA Entities)</h2>
+    <p>Here are simplified examples of JPA entities for the core modules. Relationships and fields are reduced for brevity.</p>
+    <pre><code class="language-java">// --- User Module ---
+@Entity
+@Table(name = &quot;users&quot;)
+public class User {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    @Column(unique = true, nullable = false)
+    private String username;
+    @Column(nullable = false)
+    private String password; // Hashed
+    @Column(nullable = false)
+    private String email;
+    private String firstName;
+    private String lastName;
+    private LocalDate dateOfBirth;
+    // Roles, Addresses etc. omitted for brevity
+}
+
+// --- Plan Module ---
+@Entity
+@Table(name = &quot;plans&quot;)
+public class Plan {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    @Column(nullable = false)
+    private String planName;
+    private String description;
+    @Column(nullable = false)
+    private BigDecimal monthlyPremium;
+    // Benefits, Provider Networks omitted for brevity
+}
+
+// --- Policy Module ---
+@Entity
+@Table(name = &quot;policies&quot;)
+public class Policy {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    @Column(unique = true, nullable = false)
+    private String policyNumber;
+    @ManyToOne @JoinColumn(name = &quot;user_id&quot;, nullable = false)
+    private User user; // Link to the subscriber
+    @ManyToOne @JoinColumn(name = &quot;plan_id&quot;, nullable = false)
+    private Plan plan;
+    @Column(nullable = false)
+    private LocalDate effectiveDate;
+    @Column(nullable = false)
+    private LocalDate expirationDate;
+    @Column(nullable = false)
+    private String status; // e.g., ACTIVE, PENDING, EXPIRED
+    // Dependents, Policy Documents omitted for brevity
+}
+
+// --- Payment Module (Simplified) ---
+@Entity
+@Table(name = &quot;transactions&quot;)
+public class Transaction {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    @ManyToOne @JoinColumn(name = &quot;policy_id&quot;, nullable = false)
+    private Policy policy;
+    @Column(nullable = false)
+    private BigDecimal amount;
+    @Column(nullable = false)
+    private String currency;
+    @Column(nullable = false)
+    private String status; // e.g., PENDING, SUCCESS, FAILED
+    private String gatewayTransactionId; // ID from Stripe/etc.
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+}
+
+// --- Claims Module (Simplified) ---
+@Entity
+@Table(name = &quot;claims&quot;)
+public class Claim {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    @Column(unique = true, nullable = false)
+    private String claimNumber;
+    @ManyToOne @JoinColumn(name = &quot;policy_id&quot;, nullable = false)
+    private Policy policy;
+    @Column(nullable = false)
+    private LocalDate dateOfService;
+    @Column(nullable = false)
+    private BigDecimal amountClaimed;
+    @Column(nullable = false)
+    private String status; // e.g., SUBMITTED, PROCESSING, APPROVED, DENIED
+    @CreationTimestamp
+    private LocalDateTime submissionDate;
+    // Documents, Status History omitted for brevity
+}
+</code></pre>
+    <h2 id="code-snippets">3. Essential Code Snippets</h2>
+    <p>Below are simplified examples demonstrating core functionality within the modular monolith.</p>
+    <p><strong>Example 1: User Registration (UserService &amp; UserController)</strong></p>
+    <pre><code class="language-java">// --- UserService Interface ---
+public interface UserService {
+    User registerUser(String username, String password, String email);
+}
+
+// --- UserServiceImpl ---
+@Service
+public class UserServiceImpl implements UserService {
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder; // From Spring Security
+
+    @Override
+    public User registerUser(String username, String password, String email) {
+        if (userRepository.findByUsername(username).isPresent()) {
+            throw new RuntimeException(&quot;Username already exists&quot;);
+        }
+        User user = new User();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setEmail(email);
+        // Set default roles, etc.
+        return userRepository.save(user);
+    }
+}
+
+// --- UserController ---
+@RestController
+@RequestMapping(&quot;/api/users&quot;)
+public class UserController {
+    @Autowired
+    private UserService userService;
+
+    // DTO for registration request
+    public static class RegistrationRequest {
+        public String username;
+        public String password;
+        public String email;
+    }
+
+    @PostMapping(&quot;/register&quot;)
+    public ResponseEntity&lt;?&gt; registerUser(@RequestBody RegistrationRequest request) {
+        try {
+            User newUser = userService.registerUser(request.username, request.password, request.email);
+            // Return simplified user info, not the full entity with password
+            return ResponseEntity.status(HttpStatus.CREATED).body(&quot;User registered successfully: &quot; + newUser.getUsername());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+}
+</code></pre>
+    <p><strong>Example 2: Policy Creation (PolicyService &amp; PolicyController)</strong></p>
+    <pre><code class="language-java">// --- PolicyService Interface ---
+public interface PolicyService {
+    Policy createPolicy(UUID userId, UUID planId, LocalDate effectiveDate);
+}
+
+// --- PolicyServiceImpl ---
+@Service
+public class PolicyServiceImpl implements PolicyService {
+    @Autowired private PolicyRepository policyRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private PlanRepository planRepository;
+
+    @Override
+    public Policy createPolicy(UUID userId, UUID planId, LocalDate effectiveDate) {
+        User user = userRepository.findById(userId).orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));
+        Plan plan = planRepository.findById(planId).orElseThrow(() -&gt; new RuntimeException(&quot;Plan not found&quot;));
+
+        Policy policy = new Policy();
+        policy.setUser(user);
+        policy.setPlan(plan);
+        policy.setEffectiveDate(effectiveDate);
+        // Calculate expiration date (e.g., 1 year later)
+        policy.setExpirationDate(effectiveDate.plusYears(1).minusDays(1));
+        policy.setStatus(&quot;PENDING&quot;); // Pending until payment
+        policy.setPolicyNumber(&quot;POL-&quot; + System.currentTimeMillis()); // Simple number generation
+
+        return policyRepository.save(policy);
+        // In a real app, trigger payment process here
+    }
+}
+
+// --- PolicyController ---
+@RestController
+@RequestMapping(&quot;/api/policies&quot;)
+public class PolicyController {
+    @Autowired
+    private PolicyService policyService;
+
+    // DTO for policy creation request
+    public static class CreatePolicyRequest {
+        public UUID userId;
+        public UUID planId;
+        public LocalDate effectiveDate;
+    }
+
+    @PostMapping
+    public ResponseEntity&lt;?&gt; createPolicy(@RequestBody CreatePolicyRequest request) {
+        try {
+            Policy newPolicy = policyService.createPolicy(request.userId, request.planId, request.effectiveDate);
+            // Return relevant policy info (e.g., policy number, status)
+            return ResponseEntity.status(HttpStatus.CREATED).body(&quot;Policy created: &quot; + newPolicy.getPolicyNumber());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+}
+</code></pre>
+    <h2 id="deployment-options">4. Deployment Options (Simplified)</h2>
+    <p>For the modular monolith architecture, deployment can be simpler than managing multiple microservices.</p>
+    <ul>
+        <li><strong>Executable JAR:</strong> Spring Boot applications can be packaged as a single executable JAR file (using <code>mvn package</code> or <code>gradle bootJar</code>). This JAR includes the embedded server (like Tomcat) and can be run directly on a server with Java installed (<code>java -jar app.jar</code>). This is the simplest approach.</li>
+        <li><strong>Containerization (Docker):</strong> The application can be packaged into a Docker container. A <code>Dockerfile</code> would define how to build the image, typically starting from a Java base image, copying the JAR file, and specifying the command to run it. This container can then be deployed on various platforms (Docker hosts, Kubernetes, cloud container services like AWS ECS/EKS, Google Cloud Run/GKE, Azure Container Instances/AKS).</li>
+        <li><strong>Platform as a Service (PaaS):</strong> Cloud providers offer PaaS solutions (e.g., Heroku, AWS Elastic Beanstalk, Google App Engine, Azure App Service) that simplify deployment. You typically push your code or the packaged JAR, and the platform handles provisioning servers, deploying the application, scaling, and load balancing.</li>
+    </ul>
+    <p><strong>Considerations:</strong></p>
+    <ul>
+        <li><strong>Database:</strong> A separate database instance (e.g., PostgreSQL) needs to be provisioned and managed, regardless of the application deployment method.</li>
+        <li><strong>Configuration:</strong> Externalize configuration (database credentials, API keys) using Spring Cloud Config, environment variables, or platform-specific configuration services.</li>
+        <li><strong>Scalability:</strong> While a monolith is simpler initially, scaling requires replicating the entire application instance. PaaS and container orchestration platforms help manage this.</li>
+    </ul>
+</div>
+</body>
+</html>

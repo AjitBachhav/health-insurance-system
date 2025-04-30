@@ -1,4 +1,4 @@
-package policyservice.model;
+package claimsservice.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -11,11 +11,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "policy_documents")
+@Table(name = "claim_documents")
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = "policy") // Avoid recursion
-public class PolicyDocument {
+@EqualsAndHashCode(exclude = "claim") // Avoid recursion
+public class ClaimDocument {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -23,19 +23,22 @@ public class PolicyDocument {
     private UUID documentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "policy_id", nullable = false)
-    private Policy policy;
+    @JoinColumn(name = "claim_id", nullable = false)
+    private Claim claim;
+
+    @Column(name = "document_name")
+    private String documentName; // Original filename or description
 
     @NotBlank
     @Column(name = "document_type", nullable = false)
-    private String documentType; // e.g., 'POLICY_SCHEDULE', 'ID_CARD'
+    private String documentType; // e.g., "RECEIPT", "MEDICAL_REPORT", "EXPLANATION_OF_BENEFITS"
 
     @NotBlank
     @Column(name = "document_url", nullable = false)
     private String documentUrl; // e.g., S3 URL or local path
 
     @CreationTimestamp
-    @Column(name = "generated_at", updatable = false)
-    private LocalDateTime generatedAt;
+    @Column(name = "uploaded_at", updatable = false)
+    private LocalDateTime uploadedAt;
 }
 
